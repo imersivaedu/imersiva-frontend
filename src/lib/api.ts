@@ -54,10 +54,31 @@ export interface SchoolWithClasses {
   Class: Class[];
 }
 
+export interface Experience {
+  id: string;
+  name: string;
+  classId: string;
+  userId: string;
+  pin: string;
+  createdAt: string;
+}
+
+export interface CreateExperienceRequest {
+  name: string;
+  classId: string;
+}
+
 // API Services
 export const schoolService = {
-  async getSchoolWithClasses(schoolId: string): Promise<SchoolWithClasses> {
-    const response = await api.get(`/school/withClasses/${schoolId}`);
+  async getSchoolWithClasses(): Promise<SchoolWithClasses> {
+    const response = await api.get(`/school/withClasses`);
+    return response.data;
+  },
+};
+
+export const experienceService = {
+  async createExperience(data: CreateExperienceRequest): Promise<Experience> {
+    const response = await api.post("/experience", data);
     return response.data;
   },
 };

@@ -3,22 +3,27 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  FaArrowRight,
-  FaGraduationCap,
-  FaSignOutAlt,
-  FaUser,
-} from "react-icons/fa";
+import { FaSignOutAlt, FaUser } from "react-icons/fa";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ClassGrid } from "@/components/ClassGrid";
-import { schoolService, SchoolWithClasses } from "@/lib/api";
+import { ExperienceModal } from "@/components/ExperienceModal";
+import {
+  schoolService,
+  SchoolWithClasses,
+  experienceService,
+  CreateExperienceRequest,
+} from "@/lib/api";
 import Image from "next/image";
+import toast from "react-hot-toast";
+import { FaPlus } from "react-icons/fa6";
 
 export default function DashboardPage() {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
   const [schoolData, setSchoolData] = useState<SchoolWithClasses | null>(null);
   const [loadingSchool, setLoadingSchool] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [creatingExperience, setCreatingExperience] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -33,9 +38,7 @@ export default function DashboardPage() {
       try {
         setLoadingSchool(true);
         // Using the mocked school ID as requested
-        const data = await schoolService.getSchoolWithClasses(
-          "d96d5d38-6c73-4420-ba86-c994eac336fb"
-        );
+        const data = await schoolService.getSchoolWithClasses();
         setSchoolData(data);
       } catch (error) {
         console.error("Failed to fetch school data:", error);
@@ -55,6 +58,22 @@ export default function DashboardPage() {
   const handleClassClick = (classId: string) => {
     // TODO: Navigate to class details page
     console.log("Class clicked:", classId);
+  };
+
+  const handleCreateExperience = async (data: CreateExperienceRequest) => {
+    try {
+      setCreatingExperience(true);
+      const experience = await experienceService.createExperience(data);
+      console.log("Experience created:", experience);
+
+      toast.success("Experiência criada com sucesso! PIN: " + experience.pin);
+    } catch (error) {
+      console.error("Failed to create experience:", error);
+      toast.error("Erro ao criar experiência. Tente novamente.");
+      throw error;
+    } finally {
+      setCreatingExperience(false);
+    }
   };
 
   if (loading) {
@@ -117,11 +136,15 @@ export default function DashboardPage() {
             </div>
             <button
               className="btn-primary h-fit disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => alert("troxa")}
+              onClick={() => {
+                toast.success("Criar experiência em breve!");
+                //setIsModalOpen(true)
+              }}
+              disabled={creatingExperience || loadingSchool}
             >
               <div className="flex items-center">
                 Criar Experiência
-                <FaArrowRight className="ml-2" />
+                <FaPlus className="ml-2" />
               </div>
             </button>
           </div>
@@ -201,6 +224,15 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* Experience Modal */}
+      <ExperienceModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateExperience}
+        classes={schoolData?.Class || []}
+        loading={loadingSchool}
+      />
     </div>
   );
 }

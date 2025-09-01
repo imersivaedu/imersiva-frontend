@@ -11,6 +11,7 @@ import {
   FaEyeSlash,
 } from "react-icons/fa";
 import Image from "next/image";
+import toast from "react-hot-toast";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -35,6 +36,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
+      toast.success("Login realizado com sucesso!");
       router.push("/dashboard");
     } catch (err: any) {
       setError(
