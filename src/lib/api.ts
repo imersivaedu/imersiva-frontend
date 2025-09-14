@@ -81,4 +81,8 @@ export const experienceService = {
     const response = await api.post("/experience", data);
     return response.data;
   },
+  async getExperience(pin: string): Promise<Experience> {
+    const response = await api.get(`/experience/getOne?pin=${pin}`);
+    return response.data;
+  },
 };
