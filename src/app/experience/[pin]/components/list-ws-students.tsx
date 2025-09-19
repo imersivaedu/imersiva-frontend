@@ -1,101 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { io, Socket } from "socket.io-client";
-
 interface Student {
   id: string;
   name: string;
 }
 
-const socketUrl =
-  process.env.NEXT_PUBLIC_WEBSOCKET_URL || "http://localhost:3002";
+interface WebSocketStudent {
+  name: string;
+  socketId: string;
+  studentId: string;
+  userType: string;
+}
 
 interface ListWsStudentsProps {
   expectedStudents: Student[];
-  experiencePin: string; // Experience/Room ID for WebSocket connection
+  isConnected: boolean;
+  lobbyStudents: WebSocketStudent[];
 }
 
 export function ListWsStudents({
   expectedStudents,
-  experiencePin,
+  isConnected,
+  lobbyStudents,
 }: ListWsStudentsProps) {
-  const [lobbyStudents, setLobbyStudents] = useState<string[]>([]);
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-
-  useEffect(() => {
-    if (!experiencePin) return;
-
-    // Create socket connection
-    const newSocket = io(socketUrl, {
-      transports: ["websocket"],
-      autoConnect: false,
-    });
-
-    // Set up event listeners
-    newSocket.on("connect", () => {
-      console.log(`Connected to WebSocket as ${newSocket.id}`);
-      setIsConnected(true);
-    });
-
-    newSocket.on("systemMessage", (message: string) => {
-      console.log("System message:", message);
-    });
-
-    newSocket.on(
-      "roomUpdate",
-      ({
-        experienceId: roomId,
-        students,
-      }: {
-        experienceId: string;
-        students: string[];
-      }) => {
-        console.log(`Room ${roomId} update:`, students);
-        if (roomId === experiencePin) {
-          setLobbyStudents(students);
-        }
-      }
-    );
-
-    newSocket.on("disconnect", () => {
-      console.log("Disconnected from WebSocket");
-      setIsConnected(false);
-      setLobbyStudents([]);
-    });
-
-    // Connect and join room as observer (teacher/admin view)
-    newSocket.connect();
-
-    // Join room to observe student connections
-    newSocket.emit("joinRoom", {
-      experienceId: experiencePin,
-      name: "Teacher",
-      studentId: "teacher-observer",
-    });
-
-    setSocket(newSocket);
-
-    // Cleanup on unmount
-    return () => {
-      if (newSocket) {
-        newSocket.emit("leaveRoom");
-        newSocket.disconnect();
-      }
-    };
-  }, [experiencePin, socketUrl]);
-
-  // Cleanup socket on component unmount
-  useEffect(() => {
-    return () => {
-      if (socket) {
-        socket.disconnect();
-      }
-    };
-  }, [socket]);
   const onlineCount = expectedStudents.filter((student) =>
-    lobbyStudents.includes(student.name)
+    lobbyStudents.some((lobbyStudent) => lobbyStudent.studentId === student.id)
   ).length;
 
   return (
@@ -134,8 +63,9 @@ export function ListWsStudents({
 
       <div className="space-y-2">
         {expectedStudents.map((student) => {
-          const isOnline = lobbyStudents.includes(student.name);
-
+          const isOnline = lobbyStudents.some(
+            (lobbyStudent) => lobbyStudent.studentId === student.id
+          );
           return (
             <div
               key={student.id}

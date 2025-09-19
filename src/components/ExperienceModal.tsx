@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FaTimes, FaPlus } from "react-icons/fa";
+import Image from "next/image";
 
 interface Class {
   id: string;
@@ -12,7 +13,11 @@ interface Class {
 interface ExperienceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { name: string; classId: string }) => Promise<void>;
+  onSubmit: (data: {
+    name: string;
+    classId: string;
+    //type: string;
+  }) => Promise<void>;
   classes: Class[];
   loading?: boolean;
 }
@@ -27,12 +32,17 @@ export function ExperienceModal({
   const [formData, setFormData] = useState({
     name: "",
     classId: "",
+    type: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
+
+    if (!formData.type) {
+      newErrors.type = "Selecione um tipo de experiência";
+    }
 
     if (!formData.name.trim()) {
       newErrors.name = "Nome da experiência é obrigatório";
@@ -55,10 +65,14 @@ export function ExperienceModal({
 
     try {
       setIsSubmitting(true);
-      await onSubmit(formData);
+      const tempFormData = {
+        name: formData.name,
+        classId: formData.classId,
+      };
+      await onSubmit(tempFormData);
 
       // Reset form and close modal on success
-      setFormData({ name: "", classId: "" });
+      setFormData({ name: "", classId: "", type: "" });
       setErrors({});
       onClose();
     } catch (error) {
@@ -71,17 +85,34 @@ export function ExperienceModal({
 
   const handleClose = () => {
     if (!isSubmitting) {
-      setFormData({ name: "", classId: "" });
+      setFormData({ name: "", classId: "", type: "" });
       setErrors({});
       onClose();
     }
   };
 
+  const experienceTypes = [
+    {
+      id: "FAIR",
+      name: "Feirinha",
+      description:
+        "Experiência multiplayer de interação onde alunos precisam preparar corretamente as ordens de personagens com diferentes sotaques enquanto trabalham em equipe.",
+      image: "/fair.png",
+    },
+    {
+      id: "RESTAURANT",
+      name: "Restaurante",
+      description:
+        "Simulação de atendimento em restaurante, praticando comunicação e entendimento com agentes controlados por IA.",
+      image: "/restaurant.png",
+    },
+  ];
+
   if (!isOpen) return null;
 
   return (
     <div className="bg-black/50 fixed inset-0 flex items-center justify-center z-50 p-4">
-      <div className=" rounded-lg bg-gray-50 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="rounded-lg bg-gray-50 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
@@ -98,7 +129,7 @@ export function ExperienceModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Experience Name */}
             <div>
               <label
@@ -162,6 +193,61 @@ export function ExperienceModal({
                 <p className="mt-1 text-sm text-gray-500">
                   Carregando turmas...
                 </p>
+              )}
+            </div>
+
+            {/* Experience Type Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Tipo de Experiência
+              </label>
+              <div className="grid grid-cols-1 gap-4">
+                {experienceTypes.map((type) => (
+                  <div
+                    key={type.id}
+                    onClick={() => setFormData({ ...formData, type: type.id })}
+                    className={`relative cursor-pointer rounded-lg border-2 overflow-hidden h-32 transition-all hover:shadow-lg ${
+                      formData.type === type.id
+                        ? "border-blue-500 ring-2 ring-blue-200"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    {/* Background Image */}
+                    <div className="absolute inset-0">
+                      <Image
+                        src={type.image}
+                        alt={type.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+
+                    {/* Content */}
+                    <div className="relative h-full flex flex-col justify-end p-4 text-white">
+                      <h3 className="text-xl font-bold mb-2 drop-shadow-lg">
+                        {type.name}
+                      </h3>
+                      <p className="text-sm leading-relaxed drop-shadow-md opacity-90">
+                        {type.description}
+                      </p>
+                    </div>
+
+                    {/* Selection Indicator */}
+                    {formData.type === type.id && (
+                      <div className="absolute top-3 right-3">
+                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center ring-2 ring-white">
+                          <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {errors.type && (
+                <p className="mt-2 text-sm text-red-600">{errors.type}</p>
               )}
             </div>
 

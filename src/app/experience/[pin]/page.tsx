@@ -7,15 +7,34 @@ import Button from "@/components/Button";
 import { experienceService } from "@/lib/api";
 import { ListWsStudents } from "./components/list-ws-students";
 import { FaArrowRight } from "react-icons/fa6";
+import { WsMessageViewer } from "./components/ws-message-viewer";
+import { useWebSocket } from "../../../hooks/useWebSocket";
 
 export default function ExperiencePage() {
   const [experienceData, setExperienceData] = useState<any | null>(null);
   const [loadingExperience, setLoadingExperience] = useState(true);
   const [experienceStatus, setExperienceStatus] = useState<
     "STARTING" | "ONGOING" | "FINISHED"
-  >("STARTING");
+  >("ONGOING");
 
   const { pin } = useParams<{ pin: string }>();
+
+  // Centralized WebSocket connection
+  const { isConnected, lobbyStudents, messages } = useWebSocket({
+    experiencePin: pin || "",
+    studentName: "Teacher",
+    studentId: "prof",
+    userType: "teacher",
+  });
+
+  // Create a map of studentId to student name for message display
+  const studentIdToNameMap = (experienceData?.students || []).reduce(
+    (map: Record<string, string>, student: any) => {
+      map[student.id] = student.name;
+      return map;
+    },
+    {}
+  );
 
   useEffect(() => {
     const fetchExperienceData = async () => {
@@ -184,25 +203,18 @@ export default function ExperiencePage() {
                   </div>
                   <ListWsStudents
                     expectedStudents={experienceData.students || []}
-                    experiencePin={pin}
+                    isConnected={isConnected}
+                    lobbyStudents={lobbyStudents}
                   />
                 </div>
               )}
 
               {experienceStatus === "ONGOING" && (
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium text-gray-600">
-                      Experiência em andamento
-                    </span>
-                  </div>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p className="text-green-800">
-                      WS com dados dos estudantes
-                    </p>
-                  </div>
-                </div>
+                <WsMessageViewer
+                  isConnected={isConnected}
+                  messages={messages}
+                  studentIdToNameMap={studentIdToNameMap}
+                />
               )}
 
               {experienceStatus === "FINISHED" && (
