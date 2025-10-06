@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaTimes, FaPlus } from "react-icons/fa";
 import Image from "next/image";
+import { experienceTemplateService, ExperienceTemplate } from "../lib/api";
 
 interface Class {
   id: string;
@@ -13,11 +14,7 @@ interface Class {
 interface ExperienceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: {
-    name: string;
-    classId: string;
-    //type: string;
-  }) => Promise<void>;
+  onSubmit: (data: { classId: string; templateId: string }) => Promise<void>;
   classes: Class[];
   loading?: boolean;
 }
@@ -32,16 +29,40 @@ export function ExperienceModal({
   const [formData, setFormData] = useState({
     name: "",
     classId: "",
-    type: "",
+    templateId: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [experienceTemplates, setExperienceTemplates] = useState<
+    ExperienceTemplate[]
+  >([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+
+  // Fetch experience templates when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const fetchTemplates = async () => {
+        try {
+          setTemplatesLoading(true);
+          const templates =
+            await experienceTemplateService.getExperienceTemplates();
+          setExperienceTemplates(templates);
+        } catch (error) {
+          console.error("Failed to fetch experience templates:", error);
+          setErrors({ templates: "Erro ao carregar templates de experiência" });
+        } finally {
+          setTemplatesLoading(false);
+        }
+      };
+      fetchTemplates();
+    }
+  }, [isOpen]);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
 
-    if (!formData.type) {
-      newErrors.type = "Selecione um tipo de experiência";
+    if (!formData.templateId) {
+      newErrors.templateId = "Selecione um tipo de experiência";
     }
 
     if (!formData.name.trim()) {
@@ -66,13 +87,13 @@ export function ExperienceModal({
     try {
       setIsSubmitting(true);
       const tempFormData = {
-        name: formData.name,
         classId: formData.classId,
+        templateId: formData.templateId,
       };
       await onSubmit(tempFormData);
 
       // Reset form and close modal on success
-      setFormData({ name: "", classId: "", type: "" });
+      setFormData({ name: "", classId: "", templateId: "" });
       setErrors({});
       onClose();
     } catch (error) {
@@ -85,28 +106,46 @@ export function ExperienceModal({
 
   const handleClose = () => {
     if (!isSubmitting) {
-      setFormData({ name: "", classId: "", type: "" });
+      setFormData({ name: "", classId: "", templateId: "" });
       setErrors({});
       onClose();
     }
   };
 
-  const experienceTypes = [
+  // Template display data with mapping to API templates
+  const templateDisplayData = [
     {
-      id: "FAIR",
       name: "Feirinha",
       description:
         "Experiência multiplayer de interação onde alunos precisam preparar corretamente as ordens de personagens com diferentes sotaques enquanto trabalham em equipe.",
       image: "/fair.png",
     },
     {
-      id: "RESTAURANT",
       name: "Restaurante",
       description:
         "Simulação de atendimento em restaurante, praticando comunicação e entendimento com agentes controlados por IA.",
       image: "/restaurant.png",
     },
   ];
+
+  // Template name mapping between display names (Portuguese) and API names (English)
+  const templateNameMapping: { [key: string]: string } = {
+    Feirinha: "Feirinha",
+    Restaurante: "Restaurante",
+  };
+
+  // Merge API templates with display data
+  const mergedTemplates = templateDisplayData.map((displayTemplate) => {
+    const englishName = templateNameMapping[displayTemplate.name];
+    const apiTemplate = experienceTemplates.find(
+      (template) => template.name.toLowerCase() === englishName?.toLowerCase()
+    );
+    return {
+      ...displayTemplate,
+      id: apiTemplate?.id || null,
+      subjectId: apiTemplate?.subjectId || null,
+    };
+  });
 
   if (!isOpen) return null;
 
@@ -202,52 +241,76 @@ export function ExperienceModal({
                 Tipo de Experiência
               </label>
               <div className="grid grid-cols-1 gap-4">
-                {experienceTypes.map((type) => (
-                  <div
-                    key={type.id}
-                    onClick={() => setFormData({ ...formData, type: type.id })}
-                    className={`relative cursor-pointer rounded-lg border-2 overflow-hidden h-32 transition-all hover:shadow-lg ${
-                      formData.type === type.id
-                        ? "border-blue-500 ring-2 ring-blue-200"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    {/* Background Image */}
-                    <div className="absolute inset-0">
-                      <Image
-                        src={type.image}
-                        alt={type.name}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-
-                    {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
-
-                    {/* Content */}
-                    <div className="relative h-full flex flex-col justify-end p-4 text-white">
-                      <h3 className="text-xl font-bold mb-2 drop-shadow-lg">
-                        {type.name}
-                      </h3>
-                      <p className="text-sm leading-relaxed drop-shadow-md opacity-90">
-                        {type.description}
-                      </p>
-                    </div>
-
-                    {/* Selection Indicator */}
-                    {formData.type === type.id && (
-                      <div className="absolute top-3 right-3">
-                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center ring-2 ring-white">
-                          <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
-                        </div>
-                      </div>
-                    )}
+                {templatesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <span className="ml-2 text-gray-600">
+                      Carregando templates...
+                    </span>
                   </div>
-                ))}
+                ) : (
+                  mergedTemplates.map((type) => (
+                    <div
+                      key={type.name}
+                      onClick={() =>
+                        type.id &&
+                        setFormData({ ...formData, templateId: type.id })
+                      }
+                      className={`relative cursor-pointer rounded-lg border-2 overflow-hidden h-32 transition-all hover:shadow-lg ${
+                        formData.templateId === type.id
+                          ? "border-blue-500 ring-2 ring-blue-200"
+                          : "border-gray-200 hover:border-gray-300"
+                      } ${!type.id ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      {/* Background Image */}
+                      <div className="absolute inset-0">
+                        <Image
+                          src={type.image}
+                          alt={type.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+
+                      {/* Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+
+                      {/* Content */}
+                      <div className="relative h-full flex flex-col justify-end p-4 text-white">
+                        <h3 className="text-xl font-bold mb-2 drop-shadow-lg">
+                          {type.name}
+                        </h3>
+                        <p className="text-sm leading-relaxed drop-shadow-md opacity-90">
+                          {type.description}
+                        </p>
+                      </div>
+
+                      {/* Selection Indicator */}
+                      {formData.templateId === type.id && (
+                        <div className="absolute top-3 right-3">
+                          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center ring-2 ring-white">
+                            <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Unavailable Indicator */}
+                      {!type.id && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <span className="text-white text-sm font-medium">
+                            Indisponível
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
-              {errors.type && (
-                <p className="mt-2 text-sm text-red-600">{errors.type}</p>
+              {errors.templateId && (
+                <p className="mt-2 text-sm text-red-600">{errors.templateId}</p>
+              )}
+              {errors.templates && (
+                <p className="mt-2 text-sm text-red-600">{errors.templates}</p>
               )}
             </div>
 

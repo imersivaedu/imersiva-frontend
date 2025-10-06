@@ -23,6 +23,7 @@ interface UseWebSocketProps {
   userType?: "teacher" | "student";
   studentId?: string;
   studentName?: string;
+  experienceType?: string;
 }
 
 const socketUrl =
@@ -33,6 +34,7 @@ export function useWebSocket({
   userType = "teacher",
   studentId = "teacher-observer",
   studentName = "Teacher",
+  experienceType = "Restaurante",
 }: UseWebSocketProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -96,12 +98,10 @@ export function useWebSocket({
     // Connect and join room
     newSocket.connect();
 
-    // Join room
-    newSocket.emit("joinRoom", {
+    newSocket.emit("joinTeacher", {
       experienceId: experiencePin,
-      name: studentName,
-      studentId: studentId,
-      userType: userType,
+      teacherId: studentId,
+      type: experienceType,
     });
 
     setSocket(newSocket);
@@ -109,11 +109,11 @@ export function useWebSocket({
     // Cleanup on unmount
     return () => {
       if (newSocket) {
-        newSocket.emit("leaveRoom");
+        newSocket.emit("leaveExperience");
         newSocket.disconnect();
       }
     };
-  }, [experiencePin, studentId, studentName]);
+  }, [experiencePin, studentId, studentName, userType, experienceType]);
 
   // Cleanup socket on component unmount
   useEffect(() => {

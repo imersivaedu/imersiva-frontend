@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import toast from "react-hot-toast";
 import { FaPlus } from "react-icons/fa6";
+import Button from "@/components/Button";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -76,8 +77,9 @@ export default function DashboardPage() {
             Aqui está um resumo das suas atividades educacionais.
           </p>
         </div>
-        <button
-          className="btn-primary h-fit disabled:opacity-50 disabled:cursor-not-allowed"
+        <Button
+          color="primary"
+          size="md"
           onClick={() => {
             setIsModalOpen(true);
           }}
@@ -87,7 +89,7 @@ export default function DashboardPage() {
             Criar Experiência
             <FaPlus className="ml-2" />
           </div>
-        </button>
+        </Button>
       </div>
 
       {/* Dashboard Cards */}

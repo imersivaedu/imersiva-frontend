@@ -15,7 +15,7 @@ export default function ExperiencePage() {
   const [loadingExperience, setLoadingExperience] = useState(true);
   const [experienceStatus, setExperienceStatus] = useState<
     "STARTING" | "ONGOING" | "FINISHED"
-  >("ONGOING");
+  >("STARTING");
 
   const { pin } = useParams<{ pin: string }>();
 
@@ -25,6 +25,7 @@ export default function ExperiencePage() {
     studentName: "Teacher",
     studentId: "prof",
     userType: "teacher",
+    experienceType: experienceData?.templateName || "Restaurante",
   });
 
   // Create a map of studentId to student name for message display
@@ -162,7 +163,7 @@ export default function ExperiencePage() {
                       </span>
                     </div>
                     <p className="text-lg font-semibold text-white mt-1">
-                      Restaurante
+                      {experienceData.templateName}
                     </p>
                   </div>
                 </div>

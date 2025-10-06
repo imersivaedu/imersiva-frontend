@@ -66,6 +66,13 @@ export interface Experience {
 export interface CreateExperienceRequest {
   name: string;
   classId: string;
+  templateId: string;
+}
+
+export interface ExperienceTemplate {
+  id: string;
+  name: string;
+  subjectId: string;
 }
 
 // API Services
@@ -83,6 +90,13 @@ export const experienceService = {
   },
   async getExperience(pin: string): Promise<Experience> {
     const response = await api.get(`/experience/getOne?pin=${pin}`);
+    return response.data;
+  },
+};
+
+export const experienceTemplateService = {
+  async getExperienceTemplates(): Promise<ExperienceTemplate[]> {
+    const response = await api.get("/experience-template");
     return response.data;
   },
 };
