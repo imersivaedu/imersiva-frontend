@@ -20,8 +20,9 @@ export default function ExperiencePage() {
   const [experienceData, setExperienceData] = useState<any | null>(null);
   const [loadingExperience, setLoadingExperience] = useState(true);
   const [experienceStatus, setExperienceStatus] = useState<
-    "STARTING" | "ONGOING" | "FINISHED"
-  >("STARTING");
+    "BEGINNING" | "ONGOING" | "ENDED"
+  >("BEGINNING");
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   const { pin } = useParams<{ pin: string }>();
 
@@ -55,7 +56,7 @@ export default function ExperiencePage() {
         setLoadingExperience(true);
         const data = await experienceService.getExperience(pin);
         setExperienceData(data);
-        //setExperienceStatus(data.status);
+        setExperienceStatus(data.status || "BEGINNING");
       } catch (error) {
         console.error("Failed to fetch experience data:", error);
       } finally {
@@ -65,6 +66,26 @@ export default function ExperiencePage() {
 
     fetchExperienceData();
   }, [pin]);
+
+  const updateExperienceStatus = async (
+    newStatus: "BEGINNING" | "ONGOING" | "ENDED"
+  ) => {
+    if (!experienceData?.id) return;
+
+    try {
+      setUpdatingStatus(true);
+      await experienceService.updateExperienceStatus(
+        experienceData.id,
+        newStatus
+      );
+      setExperienceStatus(newStatus);
+    } catch (error) {
+      console.error("Failed to update experience status:", error);
+      // You could add a toast notification here for better UX
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
 
   if (loadingExperience) {
     return (
@@ -90,11 +111,11 @@ export default function ExperiencePage() {
       "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium";
 
     switch (status) {
-      case "STARTING":
+      case "BEGINNING":
         return `${baseClasses} bg-yellow-100 text-yellow-800`;
       case "ONGOING":
         return `${baseClasses} bg-green-100 text-green-800`;
-      case "FINISHED":
+      case "ENDED":
         return `${baseClasses} bg-gray-100 text-gray-800`;
       default:
         return `${baseClasses} bg-blue-100 text-blue-800`;
@@ -103,11 +124,11 @@ export default function ExperiencePage() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "STARTING":
+      case "BEGINNING":
         return "Iniciando";
       case "ONGOING":
         return "Em Andamento";
-      case "FINISHED":
+      case "ENDED":
         return "Finalizada";
       default:
         return status;
@@ -189,7 +210,7 @@ export default function ExperiencePage() {
               </h2>
             </div>
             <div className="p-6">
-              {experienceStatus === "STARTING" && (
+              {experienceStatus === "BEGINNING" && (
                 <div className="space-y-4">
                   <div className="flex gap-4 items-center justify-between">
                     <div className="flex items-center space-x-2 mb-4 ">
@@ -201,14 +222,14 @@ export default function ExperiencePage() {
                     <Button
                       color="success"
                       size="md"
-                      onClick={() => {
-                        setExperienceStatus("ONGOING");
-                      }}
-                      disabled={!isConnected}
+                      onClick={() => updateExperienceStatus("ONGOING")}
+                      disabled={!isConnected || updatingStatus}
                     >
                       <div className="flex items-center">
-                        Iniciar Experiência
-                        <FaArrowRight className="ml-2" />
+                        {updatingStatus
+                          ? "Iniciando..."
+                          : "Iniciar Experiência"}
+                        {!updatingStatus && <FaArrowRight className="ml-2" />}
                       </div>
                     </Button>
                   </div>
@@ -229,12 +250,15 @@ export default function ExperiencePage() {
                     <Button
                       color="danger"
                       size="sm"
-                      onClick={() => {
+                      onClick={async () => {
                         endExperience();
-                        setExperienceStatus("FINISHED");
+                        await updateExperienceStatus("ENDED");
                       }}
+                      disabled={updatingStatus}
                     >
-                      Finalizar Experiência
+                      {updatingStatus
+                        ? "Finalizando..."
+                        : "Finalizar Experiência"}
                     </Button>
                   </div>
                   {experienceData.templateName === "Restaurante" && (
@@ -254,7 +278,7 @@ export default function ExperiencePage() {
                 </div>
               )}
 
-              {experienceStatus === "FINISHED" && (
+              {experienceStatus === "ENDED" && (
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2 mb-4">
                     <div className="w-3 h-3 bg-gray-400 rounded-full"></div>

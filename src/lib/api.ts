@@ -60,6 +60,7 @@ export interface Experience {
   classId: string;
   userId: string;
   pin: string;
+  status?: "BEGINNING" | "ONGOING" | "ENDED";
   createdAt: string;
 }
 
@@ -92,6 +93,16 @@ export const experienceService = {
   async getExperience(pin: string): Promise<Experience> {
     const response = await api.get(`/experience/getOne?pin=${pin}`);
     return response.data;
+  },
+  async updateExperienceStatus(
+    experienceId: string,
+    status: "BEGINNING" | "ONGOING" | "ENDED"
+  ): Promise<Experience> {
+    const response = await api.put("/experience/status", {
+      experienceId,
+      status,
+    });
+    return response.data.experience;
   },
 };
 
