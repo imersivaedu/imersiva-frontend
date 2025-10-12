@@ -64,7 +64,6 @@ export interface Experience {
 }
 
 export interface CreateExperienceRequest {
-  name: string;
   classId: string;
   templateId: string;
 }

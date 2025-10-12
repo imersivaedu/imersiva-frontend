@@ -36,6 +36,15 @@ export function WsMessageViewer({
     });
   };
 
+  const displayMessage = (message: ChatMessage) => {
+    if (message.from === "student" && message.studentId) {
+      return `[${
+        studentIdToNameMap[message.studentId] || message.studentId
+      }] - ${message.text}`;
+    }
+    return `[${message.from}] - ${message.text}`;
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold text-gray-900">Chat da Experiência</h2>
@@ -79,14 +88,7 @@ export function WsMessageViewer({
                 >
                   <div className="flex items-start justify-between">
                     <span className="font-medium text-primary-dark">
-                      [{message.from}
-                      {message.studentId
-                        ? ` ${
-                            studentIdToNameMap[message.studentId] ||
-                            message.studentId
-                          }`
-                        : ""}
-                      ] {message.text}
+                      {displayMessage(message)}
                     </span>
                     {message.timestamp && (
                       <span className="text-xs text-black ml-2 flex-shrink-0">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ProtectedLayout } from "@/components/ProtectedLayout";
 import Button from "@/components/Button";
@@ -8,7 +8,13 @@ import { experienceService } from "@/lib/api";
 import { ListWsStudents } from "./components/list-ws-students";
 import { FaArrowRight } from "react-icons/fa6";
 import { WsMessageViewer } from "./components/ws-message-viewer";
+import { WsFairCards } from "./components/ws-fair-cards";
 import { useWebSocket } from "../../../hooks/useWebSocket";
+
+const experienceTypes = {
+  Restaurante: "restaurant",
+  Feirinha: "fair",
+};
 
 export default function ExperiencePage() {
   const [experienceData, setExperienceData] = useState<any | null>(null);
@@ -20,13 +26,17 @@ export default function ExperiencePage() {
   const { pin } = useParams<{ pin: string }>();
 
   // Centralized WebSocket connection
-  const { isConnected, lobbyStudents, messages } = useWebSocket({
-    experiencePin: pin || "",
-    studentName: "Teacher",
-    studentId: "prof",
-    userType: "teacher",
-    experienceType: experienceData?.templateName || "Restaurante",
-  });
+  const { isConnected, lobbyStudents, messages, fairStudents, endExperience } =
+    useWebSocket({
+      experiencePin: pin || "",
+      teacherId: "teacher",
+      experienceType:
+        experienceTypes[
+          experienceData?.templateName as keyof typeof experienceTypes
+        ] || null,
+    });
+
+  console.log("experienceData?.templateName", experienceData?.templateName);
 
   // Create a map of studentId to student name for message display
   const studentIdToNameMap = (experienceData?.students || []).reduce(
@@ -192,9 +202,9 @@ export default function ExperiencePage() {
                       color="success"
                       size="md"
                       onClick={() => {
-                        alert("coming soon");
+                        setExperienceStatus("ONGOING");
                       }}
-                      disabled={false}
+                      disabled={!isConnected}
                     >
                       <div className="flex items-center">
                         Iniciar Experiência
@@ -211,11 +221,37 @@ export default function ExperiencePage() {
               )}
 
               {experienceStatus === "ONGOING" && (
-                <WsMessageViewer
-                  isConnected={isConnected}
-                  messages={messages}
-                  studentIdToNameMap={studentIdToNameMap}
-                />
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Chat da Experiência
+                    </h3>
+                    <Button
+                      color="danger"
+                      size="sm"
+                      onClick={() => {
+                        endExperience();
+                        setExperienceStatus("FINISHED");
+                      }}
+                    >
+                      Finalizar Experiência
+                    </Button>
+                  </div>
+                  {experienceData.templateName === "Restaurante" && (
+                    <WsMessageViewer
+                      isConnected={isConnected}
+                      messages={messages}
+                      studentIdToNameMap={studentIdToNameMap}
+                    />
+                  )}
+                  {experienceData.templateName === "Feirinha" && (
+                    <WsFairCards
+                      isConnected={isConnected}
+                      fairStudents={fairStudents}
+                      expectedStudents={experienceData.students || []}
+                    />
+                  )}
+                </div>
               )}
 
               {experienceStatus === "FINISHED" && (
@@ -228,7 +264,7 @@ export default function ExperiencePage() {
                   </div>
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <p className="text-gray-800">
-                      Sem WS, mostrar dados do relatório
+                      Em breve você poderá acessar o relatório da experiência
                     </p>
                   </div>
                 </div>

@@ -18,12 +18,31 @@ interface ChatMessage {
   timestamp?: string;
 }
 
+interface FairStudentState {
+  studentId: string;
+  name?: string;
+  points: number;
+  customerOrder?: {
+    list: Array<{
+      fruit: { name: string };
+      amount: number;
+    }>;
+  };
+  lastTranscription?: string;
+  wasLastDoneCorrect: boolean;
+  fruitsOnTent?: {
+    list: Array<{
+      fruit: { name: string };
+      amount: number;
+    }>;
+    amountOnOrder: number;
+  };
+}
+
 interface UseWebSocketProps {
   experiencePin: string;
-  userType?: "teacher" | "student";
-  studentId?: string;
-  studentName?: string;
-  experienceType?: string;
+  teacherId?: string;
+  experienceType: string | null;
 }
 
 const socketUrl =
@@ -31,18 +50,22 @@ const socketUrl =
 
 export function useWebSocket({
   experiencePin,
-  userType = "teacher",
-  studentId = "teacher-observer",
-  studentName = "Teacher",
-  experienceType = "Restaurante",
+  teacherId,
+  experienceType,
 }: UseWebSocketProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [lobbyStudents, setLobbyStudents] = useState<WebSocketStudent[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [fairStudents, setFairStudents] = useState<
+    Record<string, FairStudentState>
+  >({});
 
+  // Effect 1: Create and manage socket connection
   useEffect(() => {
-    if (!experiencePin) return;
+    if (!experiencePin || !experienceType) return;
+
+    console.log("Creating WebSocket connection...");
 
     // Create socket connection
     const newSocket = io(socketUrl, {
@@ -50,34 +73,36 @@ export function useWebSocket({
       autoConnect: false,
     });
 
-    // Set up event listeners
-    newSocket.on("connect", () => {
+    // Set up core connection event listeners
+    const handleConnect = () => {
       console.log(`Connected to WebSocket as ${newSocket.id}`);
       setIsConnected(true);
-    });
+    };
 
-    newSocket.on("systemMessage", (message: string) => {
+    const handleDisconnect = () => {
+      console.log("Disconnected from WebSocket");
+      setIsConnected(false);
+      setLobbyStudents([]);
+    };
+
+    const handleSystemMessage = (message: string) => {
       console.log("System message:", message);
-    });
+    };
 
-    newSocket.on(
-      "roomUpdate",
-      ({
-        experienceId: roomId,
-        students,
-      }: {
-        experienceId: string;
-        students: WebSocketStudent[];
-      }) => {
-        console.log(`Room ${roomId} update:`, students);
-        if (roomId === experiencePin) {
-          setLobbyStudents(students);
-        }
+    const handleRoomUpdate = ({
+      experienceId: roomId,
+      students,
+    }: {
+      experienceId: string;
+      students: WebSocketStudent[];
+    }) => {
+      console.log(`Room ${roomId} update:`, students);
+      if (roomId === experiencePin) {
+        setLobbyStudents(students);
       }
-    );
+    };
 
-    newSocket.on("chat:message", (message: any) => {
-      console.log("Chat message received:", message);
+    const handleChatMessage = (message: any) => {
       setMessages((prev) => [
         ...prev,
         {
@@ -87,75 +112,125 @@ export function useWebSocket({
             : new Date().toISOString(),
         },
       ]);
-    });
+    };
 
-    newSocket.on("disconnect", () => {
-      console.log("Disconnected from WebSocket");
-      setIsConnected(false);
-      setLobbyStudents([]);
-    });
+    const handleFairStateUpdate = ({
+      studentId,
+      state,
+    }: {
+      studentId: string;
+      state: any;
+    }) => {
+      console.log("Fair state update received:", studentId, state);
+      setFairStudents((prev) => ({
+        ...prev,
+        [studentId]: {
+          ...prev[studentId],
+          studentId,
+          ...state,
+        },
+      }));
+    };
 
-    // Connect and join room
+    const handleTeacherStudentsState = (allStudents: any[]) => {
+      console.log("Teacher students state received:", allStudents);
+      const studentsMap: Record<string, FairStudentState> = {};
+      for (const student of allStudents) {
+        studentsMap[student.studentId] = {
+          studentId: student.studentId,
+          name: student.name,
+          points: student.points || 0,
+          customerOrder: student.customerOrder,
+          lastTranscription: student.lastTranscription,
+          wasLastDoneCorrect: student.wasLastDoneCorrect || false,
+          fruitsOnTent: student.fruitsOnTent,
+        };
+      }
+      setFairStudents(studentsMap);
+    };
+
+    // Attach event listeners based on experience type
+    newSocket.on("connect", handleConnect);
+    newSocket.on("disconnect", handleDisconnect);
+    newSocket.on("systemMessage", handleSystemMessage);
+    newSocket.on("roomUpdate", handleRoomUpdate);
+
+    // Experience-specific event listeners
+    if (experienceType === "restaurant") {
+      newSocket.on("chat:message", handleChatMessage);
+    } else if (experienceType === "fair") {
+      newSocket.on("fair:stateUpdate", handleFairStateUpdate);
+      newSocket.on("teacher:studentsState", handleTeacherStudentsState);
+    }
+
+    // Connect to server
     newSocket.connect();
-
-    newSocket.emit("joinTeacher", {
-      experienceId: experiencePin,
-      teacherId: studentId,
-      type: experienceType,
-    });
-
     setSocket(newSocket);
 
-    // Cleanup on unmount
+    // Cleanup function
     return () => {
-      if (newSocket) {
+      console.log("Cleaning up WebSocket connection...");
+
+      // Remove event listeners
+      newSocket.off("connect", handleConnect);
+      newSocket.off("disconnect", handleDisconnect);
+      newSocket.off("systemMessage", handleSystemMessage);
+      newSocket.off("roomUpdate", handleRoomUpdate);
+
+      // Remove experience-specific listeners
+      newSocket.off("chat:message", handleChatMessage);
+      newSocket.off("fair:stateUpdate", handleFairStateUpdate);
+      newSocket.off("teacher:studentsState", handleTeacherStudentsState);
+
+      // Disconnect and cleanup
+      if (newSocket.connected) {
         newSocket.emit("leaveExperience");
         newSocket.disconnect();
       }
-    };
-  }, [experiencePin, studentId, studentName, userType, experienceType]);
 
-  // Cleanup socket on component unmount
+      setSocket(null);
+      setIsConnected(false);
+      setLobbyStudents([]);
+      setMessages([]);
+      setFairStudents({});
+    };
+  }, [experiencePin, experienceType]); // Depend on both experiencePin and experienceType
+
+  // Effect 2: Handle joining/leaving rooms when parameters change
   useEffect(() => {
+    if (!socket || !socket.connected || !experienceType) return;
+
+    console.log(`Joining room with type: ${experienceType}`);
+
+    socket.emit("joinTeacher", {
+      experienceId: experiencePin,
+      teacherId: teacherId,
+      type: experienceType,
+    });
+
+    // Cleanup function to leave room when parameters change
     return () => {
-      if (socket) {
-        socket.disconnect();
+      if (socket && socket.connected) {
+        console.log("Leaving experience due to parameter change...");
+        socket.emit("leaveExperience");
       }
     };
-  }, [socket]);
+  }, [socket, isConnected, experiencePin, teacherId, experienceType]);
 
-  const sendStudentMessage = useCallback(
-    (text: string, fromStudentId?: string) => {
-      if (socket && socket.connected && text.trim()) {
-        socket.emit("chat:studentMessage", {
-          studentId: fromStudentId || studentId,
-          text: text.trim(),
-          experienceId: experiencePin,
-        });
-      }
-    },
-    [socket, studentId, experiencePin]
-  );
-
-  const sendNpcMessage = useCallback(
-    (text: string, fromStudentId?: string) => {
-      if (socket && socket.connected && text.trim()) {
-        socket.emit("chat:npcMessage", {
-          studentId: fromStudentId || studentId,
-          text: text.trim(),
-          experienceId: experiencePin,
-        });
-      }
-    },
-    [socket, studentId, experiencePin]
-  );
+  // Function to end experience
+  const endExperience = useCallback(() => {
+    if (socket && socket.connected && experiencePin) {
+      console.log("Ending experience:", experiencePin);
+      socket.emit("endExperience", experiencePin);
+    }
+  }, [socket, experiencePin]);
 
   return {
     socket,
     isConnected,
     lobbyStudents,
     messages,
-    sendStudentMessage,
-    sendNpcMessage,
+    fairStudents,
+    endExperience,
   };
 }
