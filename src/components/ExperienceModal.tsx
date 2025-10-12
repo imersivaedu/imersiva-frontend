@@ -112,41 +112,6 @@ export function ExperienceModal({
     }
   };
 
-  // Template display data with mapping to API templates
-  const templateDisplayData = [
-    {
-      name: "Feirinha",
-      description:
-        "Experiência multiplayer de interação onde alunos precisam preparar corretamente as ordens de personagens com diferentes sotaques enquanto trabalham em equipe.",
-      image: "/fair.png",
-    },
-    {
-      name: "Restaurante",
-      description:
-        "Simulação de atendimento em restaurante, praticando comunicação e entendimento com agentes controlados por IA.",
-      image: "/restaurant.png",
-    },
-  ];
-
-  // Template name mapping between display names (Portuguese) and API names (English)
-  const templateNameMapping: { [key: string]: string } = {
-    Feirinha: "Feirinha",
-    Restaurante: "Restaurante",
-  };
-
-  // Merge API templates with display data
-  const mergedTemplates = templateDisplayData.map((displayTemplate) => {
-    const englishName = templateNameMapping[displayTemplate.name];
-    const apiTemplate = experienceTemplates.find(
-      (template) => template.name.toLowerCase() === englishName?.toLowerCase()
-    );
-    return {
-      ...displayTemplate,
-      id: apiTemplate?.id || null,
-      subjectId: apiTemplate?.subjectId || null,
-    };
-  });
-
   if (!isOpen) return null;
 
   return (
@@ -249,7 +214,7 @@ export function ExperienceModal({
                     </span>
                   </div>
                 ) : (
-                  mergedTemplates.map((type) => (
+                  experienceTemplates.map((type) => (
                     <div
                       key={type.name}
                       onClick={() =>
@@ -265,7 +230,7 @@ export function ExperienceModal({
                       {/* Background Image */}
                       <div className="absolute inset-0">
                         <Image
-                          src={type.image}
+                          src={type.imageUrl}
                           alt={type.name}
                           fill
                           className="object-cover"

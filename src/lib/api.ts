@@ -72,6 +72,8 @@ export interface ExperienceTemplate {
   id: string;
   name: string;
   subjectId: string;
+  description: string;
+  imageUrl: string;
 }
 
 // API Services
