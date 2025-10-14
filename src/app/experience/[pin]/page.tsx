@@ -27,13 +27,13 @@ export default function ExperiencePage() {
   const { pin } = useParams<{ pin: string }>();
 
   // Centralized WebSocket connection
-  const { isConnected, lobbyStudents, messages, fairStudents, endExperience } =
+  const { isConnected, lobbyStudents, messages, fairStudents, endExperience, beginExperience } =
     useWebSocket({
       experiencePin: pin || "",
       teacherId: "teacher",
       experienceType:
         experienceTypes[
-          experienceData?.templateName as keyof typeof experienceTypes
+        experienceData?.templateName as keyof typeof experienceTypes
         ] || null,
     });
 
@@ -222,7 +222,10 @@ export default function ExperiencePage() {
                     <Button
                       color="success"
                       size="md"
-                      onClick={() => updateExperienceStatus("ONGOING")}
+                      onClick={async () => {
+                        beginExperience();
+                        await updateExperienceStatus("ONGOING");
+                      }}
                       disabled={!isConnected || updatingStatus}
                     >
                       <div className="flex items-center">

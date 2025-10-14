@@ -224,6 +224,12 @@ export function useWebSocket({
       socket.emit("endExperience", experiencePin);
     }
   }, [socket, experiencePin]);
+  const beginExperience = useCallback(() => {
+    if (socket && socket.connected && experiencePin) {
+      console.log("Starting experience:", experiencePin);
+      socket.emit("beginExperience", experiencePin);
+    }
+  }, [socket, experiencePin]);
 
   return {
     socket,
@@ -232,5 +238,6 @@ export function useWebSocket({
     messages,
     fairStudents,
     endExperience,
+    beginExperience,
   };
 }

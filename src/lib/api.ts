@@ -98,7 +98,7 @@ export const experienceService = {
     experienceId: string,
     status: "BEGINNING" | "ONGOING" | "ENDED"
   ): Promise<Experience> {
-    const response = await api.put("/experience/status", {
+    const response = await api.put("/experience/update-status", {
       experienceId,
       status,
     });
