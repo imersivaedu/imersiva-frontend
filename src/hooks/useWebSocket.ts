@@ -46,7 +46,7 @@ interface UseWebSocketProps {
 }
 
 const socketUrl =
-  process.env.NEXT_PUBLIC_WEBSOCKET_URL || "http://localhost:3002";
+  process.env.NEXT_PUBLIC_WEBSOCKET_URL || "/";
 
 export function useWebSocket({
   experiencePin,
